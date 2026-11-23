@@ -18,6 +18,8 @@ from modules.cleaning_engine import clean_dataset
 from modules.quality_score import calculate_quality_score
 from modules.model_comparison import compare_algorithms
 from modules.pdf_report import generate_pdf_report
+from modules.domain_classifier import classify_dataset
+from modules.field_classifier import classify_fields
 
 # --------------------------------
 # PAGE CONFIGURATION
@@ -221,6 +223,7 @@ st.sidebar.caption("Dataset Intelligence Platform")
 page = st.sidebar.radio(
     "NAVIGATION",
     [
+        "File Segregation & Correction",
         "Dashboard",
         "Data Explorer",
         "Data Validation",
@@ -231,6 +234,8 @@ page = st.sidebar.radio(
         "Model Comparison",
         "Reports",
     ],
+    index=0,
+    key="datasentinel_main_navigation_v2",
 )
 
 st.sidebar.divider()
@@ -242,10 +247,16 @@ st.sidebar.caption("Version 1.0 | DataSentinel")
 
 if page == "Dashboard":
     st.header("Dataset Health Overview")
+    st.info(
+        "This dashboard analyses CSV and Excel datasets. For JPEG/JPG images, "
+        "PDFs, Word files, mixed batches, or other formats, use "
+        "**File Segregation & Correction** in the sidebar."
+    )
 
     uploaded_file = st.file_uploader(
-        "Upload your dataset",
+        "Upload a CSV or Excel dataset (Dashboard only)",
         type=["csv", "xlsx", "xls"],
+        help="For images and mixed file types, use File Segregation & Correction.",
     )
 
     if uploaded_file is not None:
@@ -367,6 +378,644 @@ if page == "Dashboard":
 # --------------------------------
 # OTHER MODULES
 # --------------------------------
+
+elif page == "File Segregation & Correction":
+    from pathlib import Path
+
+    st.header("AI File Segregation & Correction")
+    st.caption(
+        "Upload mixed files in one batch. DataSentinel identifies their formats, "
+        "groups them by likely domain, checks tabular data, and creates a "
+        "downloadable folder structure with original and corrected copies."
+    )
+
+    st.info(
+        "You can select files with any extension. Common images, spreadsheets, "
+        "PDFs, Word/PowerPoint files, text, JSON, TSV and Parquet are recognised. "
+        "Unknown or unsupported binaries are kept in **Needs Review** rather than guessed."
+    )
+
+    repair_col1, repair_col2 = st.columns(2)
+    with repair_col1:
+        remove_duplicates = st.checkbox(
+            "Remove exact duplicate rows in corrected copies",
+            value=False,
+            key="seg_remove_duplicates",
+            help="Off by default because identical rows can sometimes be legitimate.",
+        )
+    with repair_col2:
+        fill_missing = st.checkbox(
+            "Fill missing cells using median / most common value",
+            value=False,
+            key="seg_fill_missing",
+            help="Off by default. This fills values statistically and may not be appropriate for every dataset.",
+        )
+
+    st.subheader("Advanced Visual Intelligence")
+    vision_col1, vision_col2 = st.columns(2)
+    with vision_col1:
+        generate_image_descriptions = st.checkbox(
+            "Generate an AI description for every image (optional, slower)",
+            value=False,
+            key="seg_generate_image_descriptions_v2",
+            help="Uses an additional image-captioning model. Enable it when you need natural-language descriptions; its model downloads on first use.",
+        )
+    with vision_col2:
+        detect_multiple_objects = st.checkbox(
+            "Detect multiple visible objects (optional, slower)",
+            value=False,
+            key="seg_detect_multiple_objects_v2",
+            help="Uses an additional object-detection model to find several common objects in one image. Enable it for crowded scenes; first use downloads the model.",
+        )
+    st.caption(
+        "Image analysis includes broad category and subtype suggestions, visible expression cues, optional object detection, "
+        "and visual similarity grouping. It does not guess a person's age, gender identity, or nationality from appearance."
+    )
+
+    uploaded_files = st.file_uploader(
+        "Upload multiple files (mixed formats are allowed)",
+        accept_multiple_files=True,
+        key="file_segregation_upload",
+        help="Select CSV, Excel, PDF, DOCX, PPTX, images, JSON, text files and other formats together.",
+    )
+
+    if uploaded_files:
+        st.caption(f"{len(uploaded_files)} file(s) selected. Batch limit: 100 files and 2 GiB total.")
+
+        if st.button(
+            "Analyse, Classify & Check Files",
+            type="primary",
+            use_container_width=True,
+            key="run_file_segregation",
+        ):
+            try:
+                from modules.batch_processor import process_uploaded_files
+                from modules.file_segregation import (
+                    UNKNOWN_DOMAIN,
+                    MIXED_DOMAIN,
+                    classify_domain_text,
+                    dataframe_to_text,
+                    detect_uploaded_file,
+                    load_tabular_file,
+                    read_text_file,
+                    repair_dataframe,
+                )
+
+                analysis_records = []
+                batch_result = process_uploaded_files(uploaded_files)
+                max_full_analysis_bytes = 250 * 1024 * 1024
+
+                with st.spinner("Detecting file types and analysing content..."):
+                    for item in batch_result.get("results", []):
+                        filename = item.get("filename", "Unnamed file")
+                        record = {
+                            "filename": filename,
+                            "status": item.get("status", "error"),
+                            "message": item.get("message", ""),
+                            "file_bytes": item.get("file_bytes"),
+                            "format": "unknown",
+                            "category": "unknown",
+                            "domain": UNKNOWN_DOMAIN,
+                            "subcategory": "Needs manual review",
+                            "document_type": "Unknown",
+                            "confidence": 0.0,
+                            "evidence": [],
+                            "sheets": [],
+                            "extracted_text": "",
+                            "semantic_text": "",
+                            "image_analysis": {},
+                            "visual_embedding": None,
+                            "similarity_group": None,
+                            "visual_similarity_group": None,
+                            "notes": [],
+                        }
+
+                        if item.get("status") != "ready":
+                            analysis_records.append(record)
+                            continue
+
+                        file_bytes = item.get("file_bytes") or b""
+                        file_size = int(item.get("size_bytes", len(file_bytes)))
+
+                        try:
+                            detection = detect_uploaded_file(filename, file_bytes)
+                            file_format = detection.get("format", "unknown")
+                            file_category = detection.get("category", "unknown")
+                            record["format"] = file_format
+                            record["category"] = file_category
+                            record["message"] = detection.get("message", "")
+
+                            # Advanced image understanding: open-vocabulary CLIP classification,
+                            # optional captioning / object detection, and visual embeddings.
+                            if file_category == "image":
+                                from modules.image_ai.advanced_image_analyzer import analyze_image_bytes
+
+                                image_result = analyze_image_bytes(
+                                    file_bytes,
+                                    filename=filename,
+                                    generate_caption=generate_image_descriptions,
+                                    detect_objects=detect_multiple_objects,
+                                )
+                                if image_result.get("success"):
+                                    record["image_analysis"] = image_result
+                                    record["domain"] = image_result.get("domain") or UNKNOWN_DOMAIN
+                                    record["subcategory"] = image_result.get("subcategory") or "Image"
+                                    record["document_type"] = image_result.get("predicted_category") or "Image"
+                                    record["confidence"] = image_result.get("relative_score", 0.0)
+                                    record["visual_embedding"] = image_result.get("visual_embedding")
+                                    record["semantic_text"] = " ".join([
+                                        str(image_result.get("caption", "")),
+                                        str(image_result.get("visual_group", "")),
+                                        str(image_result.get("predicted_category", "")),
+                                        " ".join(image_result.get("tags", []) or []),
+                                        " ".join(x.get("label", "") for x in image_result.get("detected_objects", []) or []),
+                                    ])
+                                    record["status"] = "needs_review" if image_result.get("needs_review") else "analysed"
+                                    record["notes"].extend(image_result.get("notes", []))
+                                    if image_result.get("needs_review"):
+                                        record["notes"].append(
+                                            "The leading visual match is uncertain. Confirm or change the category before segregation."
+                                        )
+                                else:
+                                    record["notes"].append(
+                                        image_result.get("message", "Image model could not identify this image.")
+                                    )
+                                    record["status"] = "needs_review"
+                                record["notes"].append(
+                                    "Image content is analysed; the original image pixels are never modified."
+                                )
+
+                            # CSV / Excel / JSON / TSV / Parquet.
+                            elif file_category == "tabular":
+                                if file_size > max_full_analysis_bytes:
+                                    if file_format in {"csv", "tsv"}:
+                                        sheets = load_tabular_file(
+                                            filename, file_bytes, file_format, nrows=20000
+                                        )
+                                        record["status"] = "sampled"
+                                        record["notes"].append(
+                                            "File exceeds 250 MiB. The first 20,000 rows were sampled for classification; "
+                                            "full-file correction is not performed in this in-memory workflow."
+                                        )
+                                    else:
+                                        record["status"] = "needs_review"
+                                        record["notes"].append(
+                                            "File exceeds 250 MiB. It was accepted, but full spreadsheet parsing "
+                                            "is deferred to a disk-based processing mode to protect laptop memory."
+                                        )
+                                        analysis_records.append(record)
+                                        continue
+                                elif file_format in {"xlsx", "xls"}:
+                                    from modules.extractors.tabular_extractor import extract_tabular_data
+
+                                    extraction = extract_tabular_data(filename, file_bytes)
+                                    if not extraction.get("success"):
+                                        raise ValueError(extraction.get("error", "Spreadsheet extraction failed."))
+                                    sheets = extraction.get("sheets", [])
+                                else:
+                                    sheets = load_tabular_file(filename, file_bytes, file_format)
+
+                                for sheet in sheets:
+                                    dataframe = sheet.get("dataframe")
+                                    if dataframe is None:
+                                        continue
+
+                                    sheet_text_for_similarity = dataframe_to_text(dataframe, max_rows=20)
+                                    record["semantic_text"] += "\n" + sheet_text_for_similarity
+                                    fallback = classify_domain_text(
+                                        sheet_text_for_similarity, filename=filename
+                                    )
+                                    prediction = {}
+                                    try:
+                                        prediction = classify_dataset(dataframe) or {}
+                                    except Exception as model_error:
+                                        record["notes"].append(
+                                            f"Dataset ML classifier unavailable for this sheet: {model_error}"
+                                        )
+
+                                    predicted_domain = prediction.get("domain")
+                                    predicted_status = prediction.get("status", "recognised")
+                                    if predicted_domain and predicted_status != "needs_review":
+                                        sheet_domain = predicted_domain
+                                        classification_status = "recognised"
+                                        confidence = prediction.get(
+                                            "similarity_score", prediction.get("confidence", 0.0)
+                                        )
+                                    elif fallback.get("domain") != UNKNOWN_DOMAIN:
+                                        sheet_domain = fallback["domain"]
+                                        classification_status = fallback["status"]
+                                        confidence = fallback.get("confidence", 0.0)
+                                    else:
+                                        sheet_domain = UNKNOWN_DOMAIN
+                                        classification_status = "needs_review"
+                                        confidence = fallback.get("confidence", 0.0)
+
+                                    try:
+                                        field_results = classify_fields(dataframe) or {}
+                                    except Exception:
+                                        field_results = {"fields": []}
+
+                                    repair = repair_dataframe(
+                                        dataframe,
+                                        remove_duplicates=remove_duplicates,
+                                        fill_missing=fill_missing,
+                                    )
+                                    record["sheets"].append({
+                                        "sheet_name": sheet.get("sheet_name", "Data"),
+                                        "row_count": int(sheet.get("row_count", len(dataframe))),
+                                        "column_count": int(sheet.get("column_count", len(dataframe.columns))),
+                                        "domain": sheet_domain,
+                                        "subcategory": prediction.get(
+                                            "subcategory", fallback.get("subcategory", "Dataset")
+                                        ),
+                                        "dataset_type": prediction.get("dataset_type", "Tabular dataset"),
+                                        "classification_status": classification_status,
+                                        "confidence": confidence,
+                                        "field_rows": [
+                                            {
+                                                "Field": field.get("column", ""),
+                                                "Identified As": str(field.get("field_type", "unknown")).replace("_", " ").title(),
+                                            }
+                                            for field in field_results.get("fields", [])
+                                        ],
+                                        "cleaned_dataframe": repair["dataframe"],
+                                        "repair_summary": repair["summary"],
+                                        "suggestions": repair["suggestions"],
+                                        "sampled": record["status"] == "sampled",
+                                    })
+
+                                if not record["sheets"]:
+                                    raise ValueError("No readable table or worksheet was found.")
+
+                                sheet_domains = list(dict.fromkeys(
+                                    sheet["domain"] for sheet in record["sheets"]
+                                ))
+                                recognised_domains = [
+                                    domain for domain in sheet_domains if domain != UNKNOWN_DOMAIN
+                                ]
+                                if len(recognised_domains) > 1:
+                                    record["domain"] = MIXED_DOMAIN
+                                elif len(recognised_domains) == 1:
+                                    record["domain"] = recognised_domains[0]
+                                else:
+                                    record["domain"] = UNKNOWN_DOMAIN
+                                record["subcategory"] = "Spreadsheet / structured dataset"
+                                record["document_type"] = "Tabular Dataset"
+                                if record["status"] == "ready":
+                                    record["status"] = "analysed"
+
+                            # PDF / DOCX / PPTX. TXT and other text types use the text reader.
+                            elif file_category == "document":
+                                if file_format in {"pdf", "docx", "pptx"}:
+                                    from modules.extractors.document_extractor import extract_document_data
+                                    extraction = extract_document_data(filename, file_bytes)
+                                    if not extraction.get("success"):
+                                        raise ValueError(extraction.get("error", "Document extraction failed."))
+                                    content = extraction.get("content", {}) or {}
+                                    text_content = content.get("full_text", "") or ""
+                                else:
+                                    text_content = read_text_file(file_bytes, file_format)
+
+                                record["extracted_text"] = text_content
+                                record["semantic_text"] = text_content[:6000]
+                                classification = classify_domain_text(text_content, filename=filename)
+                                record.update({
+                                    "domain": classification["domain"],
+                                    "subcategory": classification["subcategory"],
+                                    "document_type": classification["document_type"],
+                                    "confidence": classification["confidence"],
+                                    "evidence": classification["evidence"],
+                                    "status": classification["status"],
+                                })
+                                if not text_content.strip():
+                                    record["notes"].append(
+                                        "No readable text was extracted. Scanned PDFs and image-only documents need OCR."
+                                    )
+                                    record["domain"] = UNKNOWN_DOMAIN
+                                    record["status"] = "needs_review"
+
+                            elif file_category == "text":
+                                text_content = read_text_file(file_bytes, file_format)
+                                record["extracted_text"] = text_content
+                                record["semantic_text"] = text_content[:6000]
+                                classification = classify_domain_text(text_content, filename=filename)
+                                record.update({
+                                    "domain": classification["domain"],
+                                    "subcategory": classification["subcategory"],
+                                    "document_type": classification["document_type"],
+                                    "confidence": classification["confidence"],
+                                    "evidence": classification["evidence"],
+                                    "status": classification["status"],
+                                })
+
+                            elif file_category == "archive":
+                                record["notes"].append(
+                                    "Archives are not unpacked automatically for security. Extract the archive and upload its files."
+                                )
+                                record["status"] = "needs_review"
+
+                            else:
+                                # The original is retained; no unsupported binary is executed or guessed.
+                                record["notes"].append(
+                                    "Format not currently readable by DataSentinel. It will be placed in Unknown / Needs Review."
+                                )
+                                record["status"] = "needs_review"
+
+                        except Exception as file_error:
+                            record["domain"] = UNKNOWN_DOMAIN
+                            record["status"] = "error"
+                            record["notes"].append(str(file_error))
+
+                        analysis_records.append(record)
+
+                # Group files by shared content semantics and images by visual embeddings.
+                try:
+                    from modules.semantic_grouping import assign_similarity_groups
+                    similarity_summary = assign_similarity_groups(analysis_records)
+                except Exception as similarity_error:
+                    similarity_summary = {"warning": str(similarity_error)}
+                    for result_record in analysis_records:
+                        result_record.setdefault("similarity_group", None)
+                        result_record.setdefault("visual_similarity_group", None)
+
+                st.session_state["file_segregation_similarity_summary"] = similarity_summary
+                st.session_state["file_segregation_records"] = analysis_records
+                st.session_state["file_segregation_batch"] = {
+                    "total_files": batch_result.get("total_files", len(analysis_records)),
+                    "ready_files": batch_result.get("ready_files", 0),
+                    "rejected_files": batch_result.get("rejected_files", 0),
+                    "total_size_bytes": batch_result.get("total_size_bytes", 0),
+                }
+                old_zip = st.session_state.pop("file_segregation_zip_path", None)
+                if old_zip and Path(old_zip).exists():
+                    try:
+                        Path(old_zip).unlink()
+                    except OSError:
+                        pass
+                st.success("Batch analysis finished. Review the suggested categories and corrections below.")
+
+            except Exception as e:
+                st.error(f"File segregation failed: {e}")
+                with st.expander("Technical details"):
+                    st.exception(e)
+
+    records = st.session_state.get("file_segregation_records", [])
+    if records:
+        st.divider()
+        st.subheader("Segregation Results")
+
+        summary_rows = []
+        for record in records:
+            summary_rows.append({
+                "File": record.get("filename", ""),
+                "Detected Format": str(record.get("format", "unknown")).upper(),
+                "Suggested Category": record.get("domain", "Unknown / Needs Review"),
+                "Content Group": record.get("similarity_group") or "—",
+                "Visual Group": record.get("visual_similarity_group") or "—",
+                "Status": record.get("status", "unknown").replace("_", " ").title(),
+            })
+        summary_df = pd.DataFrame(summary_rows)
+        group_counts = (
+            summary_df.groupby("Suggested Category", dropna=False)
+            .size()
+            .reset_index(name="Files")
+            .sort_values("Files", ascending=False)
+        )
+        st.markdown("**Files grouped by suggested domain**")
+        st.dataframe(group_counts, use_container_width=True, hide_index=True)
+        st.markdown("**Individual file results**")
+        st.dataframe(summary_df, use_container_width=True, hide_index=True)
+        similarity_summary = st.session_state.get("file_segregation_similarity_summary", {})
+        if similarity_summary:
+            st.caption(
+                "Similarity grouping: "
+                f"{similarity_summary.get('text_groups', 0)} content group(s), "
+                f"{similarity_summary.get('visual_groups', 0)} visual group(s). "
+                "Groups are based on extracted text/captions and image embeddings; review them before relying on them."
+            )
+
+        st.markdown("**Confirm or change each file's category before creating the segregated ZIP.**")
+        from modules.file_segregation import (
+            DOMAIN_OPTIONS,
+            UNKNOWN_DOMAIN,
+            MIXED_DOMAIN,
+            create_segregation_archive,
+            dataframe_to_csv_bytes,
+        )
+
+        for file_index, record in enumerate(records):
+            with st.container(border=True):
+                st.markdown(f"### {record.get('filename', 'Unnamed file')}")
+                st.caption(
+                    f"Format: {str(record.get('format', 'unknown')).upper()} · "
+                    f"Type: {record.get('category', 'unknown')} · "
+                    f"Status: {record.get('status', 'unknown')}"
+                )
+
+                current_domain = record.get("domain", UNKNOWN_DOMAIN)
+                domain_options = list(dict.fromkeys([current_domain] + DOMAIN_OPTIONS))
+                selected_domain = st.selectbox(
+                    "Confirm file category",
+                    options=domain_options,
+                    index=domain_options.index(current_domain),
+                    key=f"seg_file_domain_{file_index}",
+                )
+                record["domain"] = selected_domain
+
+                if record.get("subcategory"):
+                    st.write(f"**Detected subtype:** {record['subcategory']}")
+                if record.get("document_type"):
+                    st.write(f"**File / document type:** {record['document_type']}")
+                if record.get("confidence") not in (None, 0, 0.0, ""):
+                    st.caption(
+                        f"Model / keyword match indicator: {record['confidence']}. "
+                        "This is a ranking aid, not a guaranteed probability."
+                    )
+                if record.get("evidence"):
+                    st.caption("Evidence found: " + ", ".join(record["evidence"]))
+
+                for note in record.get("notes", []):
+                    st.info(note)
+
+                for sheet_index, sheet in enumerate(record.get("sheets", [])):
+                    st.divider()
+                    st.markdown(
+                        f"**Sheet: {sheet.get('sheet_name', 'Data')}** — "
+                        f"{sheet.get('row_count', 0):,} rows × {sheet.get('column_count', 0)} columns"
+                    )
+                    sheet_domain = sheet.get("domain", UNKNOWN_DOMAIN)
+                    sheet_options = list(dict.fromkeys([sheet_domain] + DOMAIN_OPTIONS))
+                    sheet["domain"] = st.selectbox(
+                        f"Confirm category for sheet: {sheet.get('sheet_name', 'Data')}",
+                        options=sheet_options,
+                        index=sheet_options.index(sheet_domain),
+                        key=f"seg_sheet_domain_{file_index}_{sheet_index}",
+                    )
+
+                    repair_summary = sheet.get("repair_summary", {})
+                    metric_cols = st.columns(4)
+                    metric_cols[0].metric("Missing cells", f"{repair_summary.get('missing_before', 0):,}")
+                    metric_cols[1].metric("Duplicate rows", f"{repair_summary.get('duplicates_before', 0):,}")
+                    metric_cols[2].metric("Whitespace trimmed", f"{repair_summary.get('whitespace_cells_trimmed', 0):,}")
+                    metric_cols[3].metric("Rows after repair", f"{repair_summary.get('rows_after', 0):,}")
+
+                    if sheet.get("field_rows"):
+                        with st.expander("Detected fields"):
+                            st.dataframe(
+                                pd.DataFrame(sheet["field_rows"]),
+                                use_container_width=True,
+                                hide_index=True,
+                            )
+                    with st.expander("Preview corrected data"):
+                        st.dataframe(
+                            sheet["cleaned_dataframe"].head(15),
+                            use_container_width=True,
+                        )
+                    for suggestion in sheet.get("suggestions", []):
+                        st.caption("• " + suggestion)
+
+                image_analysis = record.get("image_analysis") or {}
+                if record.get("category") == "image" and image_analysis:
+                    st.divider()
+                    st.markdown("**Visual understanding**")
+                    preview_col, details_col = st.columns([1, 2])
+                    with preview_col:
+                        st.image(record.get("file_bytes"), use_container_width=True)
+                    with details_col:
+                        if image_analysis.get("caption"):
+                            st.write("**AI description:** " + image_analysis["caption"])
+                        st.write("**Visual family:** " + str(image_analysis.get("visual_group", "Unclear")))
+                        st.write("**Best matching label:** " + str(image_analysis.get("predicted_category", "Unclear")))
+                        if image_analysis.get("imagenet_top_label"):
+                            imagenet_score = float(image_analysis.get("imagenet_top_score", 0.0))
+                            st.write(
+                                "**Everyday-object model cross-check:** "
+                                + str(image_analysis.get("imagenet_top_label"))
+                                + f" (ranking score: {imagenet_score:.1%})"
+                            )
+                        if image_analysis.get("visible_expression"):
+                            st.write(
+                                "**Visible expression cue:** "
+                                + str(image_analysis["visible_expression"].get("visible_cue", "not clear"))
+                            )
+                        if image_analysis.get("detected_objects"):
+                            object_labels = [
+                                f"{obj.get('label')} ({obj.get('score', 0):.2f})"
+                                for obj in image_analysis["detected_objects"]
+                            ]
+                            st.write("**Detected objects:** " + ", ".join(object_labels))
+                        if image_analysis.get("top_predictions"):
+                            with st.expander("Alternative visual matches"):
+                                st.dataframe(
+                                    pd.DataFrame(image_analysis["top_predictions"]),
+                                    use_container_width=True,
+                                    hide_index=True,
+                                )
+                        if record.get("visual_similarity_group"):
+                            st.caption(f"Visual similarity group: {record['visual_similarity_group']}")
+                        if record.get("similarity_group"):
+                            st.caption(f"Cross-file content similarity group: {record['similarity_group']}")
+
+                    from modules.image_ai.advanced_image_analyzer import image_training_labels, save_image_training_example
+                    image_labels = image_training_labels()
+                    current_label = image_analysis.get("predicted_category", "Other / Unclear")
+                    label_index = image_labels.index(current_label) if current_label in image_labels else 0
+                    selected_training_label = st.selectbox(
+                        "Correct / confirm the visual label (optional training feedback)",
+                        options=image_labels,
+                        index=label_index,
+                        key=f"image_training_label_{file_index}",
+                    )
+                    if st.button(
+                        "Save this confirmed label as a training example",
+                        key=f"save_image_training_{file_index}",
+                    ):
+                        try:
+                            saved_example = save_image_training_example(
+                                record.get("file_bytes", b""),
+                                record.get("filename", "image"),
+                                selected_training_label,
+                            )
+                            st.success(f"Saved training example: {saved_example}")
+                        except Exception as feedback_error:
+                            st.error(f"Could not save training example: {feedback_error}")
+
+                if record.get("extracted_text"):
+                    with st.expander("Preview extracted document text"):
+                        st.text(record["extracted_text"][:4000])
+
+        st.divider()
+        st.subheader("Improve the Image Model with Your Verified Labels")
+        st.write(
+            "Each saved correction becomes a labelled image example. After collecting varied examples "
+            "for multiple categories, DataSentinel can train a project-specific classifier on top of CLIP embeddings."
+        )
+        try:
+            from modules.image_ai.image_training import count_image_training_examples, train_custom_image_classifier
+            training_counts = count_image_training_examples()
+            train_col1, train_col2 = st.columns(2)
+            train_col1.metric("Verified image examples", training_counts.get("total", 0))
+            train_col2.metric("Labelled categories", training_counts.get("classes", 0))
+            st.caption(
+                "For a useful first model, collect at least 5 examples in each of at least 2 categories; "
+                "for stronger generalisation, aim for 50–200 varied examples per category and keep a separate real-world test set."
+            )
+            if st.button(
+                "Train / Refresh Custom Image Classifier",
+                type="secondary",
+                use_container_width=True,
+                key="train_custom_image_classifier",
+            ):
+                with st.spinner("Encoding labelled images and evaluating the custom classifier..."):
+                    training_result = train_custom_image_classifier()
+                st.success(
+                    f"Custom image classifier trained. Held-out accuracy: "
+                    f"{training_result['accuracy']:.1%} on {training_result['test_samples']} test images."
+                )
+                st.caption(
+                    f"Categories: {', '.join(training_result['classes'])}. Model saved to {training_result['model_path']}. "
+                    + training_result["note"]
+                )
+        except Exception as training_panel_error:
+            st.warning(f"Image training tools are not available yet: {training_panel_error}")
+
+        st.divider()
+        st.subheader("Create Segregated & Corrected Download")
+        st.write(
+            "The ZIP preserves every original file in its assigned category. "
+            "Corrected table copies are placed under **Cleaned Data** by sheet category; "
+            "Excel files also receive a rebuilt cleaned workbook. Extracted document text "
+            "is stored separately. The original uploads are never overwritten."
+        )
+
+        if st.button(
+            "Build Segregated ZIP",
+            type="primary",
+            use_container_width=True,
+            key="build_segregated_zip",
+        ):
+            try:
+                with st.spinner("Building category folders and corrected copies..."):
+                    archive_path = create_segregation_archive(records)
+                    st.session_state["file_segregation_zip_path"] = archive_path
+                st.success("Segregated ZIP is ready.")
+            except Exception as e:
+                st.error(f"Could not build the segregated ZIP: {e}")
+                with st.expander("Technical details"):
+                    st.exception(e)
+
+        archive_path = st.session_state.get("file_segregation_zip_path")
+        if archive_path and Path(archive_path).is_file():
+            with open(archive_path, "rb") as archive_file:
+                st.download_button(
+                    "Download Segregated & Corrected Files",
+                    data=archive_file,
+                    file_name="DataSentinel_Segregated_and_Corrected.zip",
+                    mime="application/zip",
+                    use_container_width=True,
+                    key="download_segregated_zip",
+                )
+
 
 elif page == "Data Explorer":
     st.header("Advanced Data Explorer")
