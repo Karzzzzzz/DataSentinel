@@ -1,0 +1,138 @@
+
+sample_text,domain,subcategory,dataset_type
+Student_ID Student_Name Age Marks Attendance,Education,College,Student Academic Records
+USN Semester Department CGPA Credits,Education,College,College Academic Performance
+Roll_Number Student_Name Class Section Fees,Education,School,School Student Register
+Student_Name Subject Internal External Marks,Education,College,Examination Results
+Student_ID Course_Name Admission_Date Tuition_Fees,Education,College,College Admission Records
+Library_ID Book_Name Author_Name Issue_Date Return_Date,Education,Library,Library Management Records
+Employee_ID Employee_Name Salary Department,Employment,Payroll,Employee Salary Register
+Staff_ID Designation Joining_Date Monthly_Salary,Employment,Payroll,Staff Payroll
+Employee_Name Leave_Days Leave_Type Approval,Employment,Human Resources,Employee Leave Register
+Employee_ID Attendance Working_Hours Overtime,Employment,Attendance,Employee Attendance Records
+Candidate_ID Applicant_Name Skills Experience Interview_Date,Employment,Recruitment,Recruitment Records
+Food_ID Food_Name Calories Protein Carbohydrates Fat,Food & Beverage,Nutrition,Food Nutrition Records
+Recipe_ID Recipe_Name Ingredients Preparation_Time Cooking_Time Cuisine,Food & Beverage,Recipes,Recipe Database
+Menu_ID Dish_Name Description Price Cuisine Availability,Food & Beverage,Restaurant,Restaurant Menu
+Restaurant_ID Order_ID Table_Number Order_Date Total_Bill,Food & Beverage,Restaurant,Restaurant Orders
+Food_ID Item_Name Quantity Expiry_Date Storage_Temperature,Food & Beverage,Inventory,Food Inventory Records
+Order_ID Customer_Name Food_Item Quantity Delivery_Address Order_Status,Food & Beverage,Delivery,Food Delivery Records
+Farm_ID Crop_Name Production_Quantity Harvest_Date Farm_Location,Agriculture,Crops,Crop Production Records
+Livestock_ID Animal_Type Breed Age Weight Vaccination_Date,Agriculture,Animal Farming,Livestock Records
+Field_ID Soil_Type Moisture PH_Level Crop_Type,Agriculture,Soil,Soil Analysis Records
+Farm_ID Irrigation_Type Water_Usage Irrigation_Date,Agriculture,Irrigation,Irrigation Records
+Farmer_ID Crop_Name Seed_Cost Fertilizer_Cost Harvest_Revenue,Agriculture,Farm Finance,Farm Expense Records
+Household_ID Family_Member Relationship Age,Household,Family,Family Records
+Expense_ID Expense_Category Amount Payment_Date,Household,Budget,Household Expense Records
+Item_Name Grocery_Price Quantity Purchase_Date Store,Household,Grocery,Grocery Purchase Records
+Bill_ID Electricity_Units Water_Units Gas_Usage Monthly_Amount,Household,Utilities,Household Bills
+Asset_ID Appliance_Name Purchase_Date Warranty_Expiry Maintenance_Cost,Household,Property,Household Asset Records
+Product_ID Product_Name Quantity Unit_Price Revenue,Business,Sales,Sales Transactions
+Order_ID Customer_ID Order_Date Total_Amount,Business,Sales,Customer Orders
+Product_Name Stock_Quantity Warehouse Supplier,Business,Inventory,Inventory Register
+Customer_ID Customer_Name Phone Email,Business,Customers,Customer Database
+Invoice_ID Product_Name Quantity Tax Total,Business,Invoicing,Sales Invoice Records
+Transaction_ID Account_Number Amount Transaction_Date,Finance,Banking,Bank Transactions
+Loan_ID Customer_ID Principal_Amount Interest_Rate,Finance,Loans,Loan Register
+Investment_ID Asset_Name Investment_Value Purchase_Date,Finance,Investments,Investment Portfolio
+Expense_ID Category Amount Payment_Date,Business,Accounting,Business Expense Records
+Account_Number Balance Credit Debit,Finance,Banking,Bank Account Records
+Tax_ID Taxpayer_Name Tax_Year Tax_Amount Filing_Date,Finance,Taxation,Tax Records
+Property_ID House_Price Area Bedrooms Location,Real Estate,Property Sales,Property Listings
+Apartment_ID Monthly_Rent Area Location Bathrooms,Real Estate,Rental,Apartment Rental Records
+Owner_Name Property_Value Purchase_Date Ownership_Type,Real Estate,Property Ownership,Property Ownership Records
+Property_ID Maintenance_Cost Maintenance_Date Contractor,Real Estate,Property Management,Property Maintenance Records
+Property_ID Mortgage_Amount Interest_Rate Monthly_Payment,Real Estate,Mortgage,Property Mortgage Records
+Patient_ID Patient_Name Diagnosis Appointment_Date,Healthcare,Patients,Patient Medical Records
+Patient_ID Medicine_Name Dosage Prescription_Date,Healthcare,Pharmacy,Medical Prescriptions
+Doctor_ID Specialisation Hospital Department,Healthcare,Staff,Hospital Staff Records
+Patient_ID Test_Name Test_Result Reference_Range Test_Date,Healthcare,Diagnostics,Medical Laboratory Results
+Patient_ID Insurance_ID Claim_Amount Claim_Date,Healthcare,Insurance,Medical Insurance Claims
+Appointment_ID Patient_ID Doctor_ID Appointment_Time,Healthcare,Appointments,Hospital Appointment Records
+Vehicle_ID Registration_Number Fuel_Type Mileage,Transport,Vehicles,Vehicle Register
+Driver_ID Route_ID Distance Travel_Date,Transport,Logistics,Transport Records
+Vehicle_ID Fuel_Type Fuel_Quantity Fuel_Cost Refueling_Date,Transport,Fuel,Fuel Consumption Records
+Ticket_ID Passenger_Name Departure Arrival Travel_Date,Transport,Public Transport,Passenger Ticket Records
+Vehicle_ID Maintenance_Date Service_Type Repair_Cost,Transport,Maintenance,Vehicle Maintenance Records
+Shipment_ID Origin Destination Weight Dispatch_Date,Logistics,Shipping,Shipment Records
+Warehouse_ID Product_ID Storage_Location Stock_Quantity,Logistics,Warehousing,Warehouse Inventory Records
+Delivery_ID Courier_Name Tracking_Number Delivery_Status,Logistics,Courier,Courier Delivery Records
+Supplier_ID Purchase_Order Material_Name Quantity Arrival_Date,Logistics,Supply Chain,Supply Chain Records
+Production_ID Product_ID Units_Produced Production_Date,Manufacturing,Production,Production Records
+Machine_ID Machine_Name Operating_Hours Maintenance_Date,Manufacturing,Maintenance,Machine Maintenance Records
+Batch_ID Product_Name Defect_Count Inspection_Result,Manufacturing,Quality Control,Product Quality Records
+Material_ID Material_Name Unit_Cost Stock_Quantity,Manufacturing,Materials,Raw Material Inventory
+Product_ID Component_ID Required_Quantity Assembly_Date,Manufacturing,Assembly,Manufacturing Bill Of Materials
+Product_ID Brand_Name Category Selling_Price Stock, Retail & Ecommerce,Catalogue,Product Catalogue
+Order_ID Customer_ID Product_ID Payment_Status,Retail & Ecommerce,Orders,Ecommerce Order Records
+Return_ID Order_ID Product_ID Return_Reason Refund_Amount,Retail & Ecommerce,Returns,Product Return Records
+Customer_ID Visit_Date Purchase_Amount Loyalty_Points,Retail & Ecommerce,Customers,Retail Customer Records
+Product_ID Listed_Price Discounted_Price Promotion_Date,Retail & Ecommerce,Pricing,Product Pricing Records
+Citizen_ID Applicant_Name Application_Type Submission_Date,Government,Public Services,Government Application Records
+Census_ID Household_Size Population_Age Region,Government,Census,Population Census Records
+Permit_ID Applicant_Name Permit_Type Issue_Date,Government,Permits,Permit Register
+Project_ID Department Budget Allocation_Date,Government,Public Finance,Government Budget Records
+Public_Project_ID Contractor Project_Cost Completion_Date,Government,Public Works,Public Infrastructure Records
+Member_ID Member_Name Joining_Date Membership_Type,Organisations,Membership,Organisation Membership Register
+Party_Member_ID Constituency Member_Name Joining_Date,Organisations,Membership,Political Party Membership Register
+Club_ID Member_Name Membership_Fee Renewal_Date,Organisations,Clubs,Club Membership Records
+Committee_ID Member_Name Role Meeting_Date,Organisations,Committees,Committee Records
+Event_ID Member_ID Attendance_Date Participation_Status,Organisations,Events,Organisation Event Records
+Athlete_ID Athlete_Name Sport_Name Team_Name Age,Sports & Fitness,Athletes,Athlete Records
+Match_ID Team_A Team_B Score Match_Date,Sports & Fitness,Matches,Sports Match Results
+Workout_ID Exercise_Name Duration Calories_Burned Workout_Date,Sports & Fitness,Fitness,Fitness Activity Records
+Gym_Member_ID Membership_Type Joining_Date Renewal_Date,Sports & Fitness,Gym,Gym Membership Records
+Booking_ID Traveller_Name Destination Departure_Date Return_Date,Travel & Tourism,Bookings,Travel Booking Records
+Hotel_ID Destination Room_Type Nightly_Price Availability,Travel & Tourism,Tourism,Travel Accommodation Listings
+Tour_ID Package_Name Destination Duration Package_Price,Travel & Tourism,Tours,Tour Package Records
+Attraction_ID Attraction_Name Location Visitor_Count,Travel & Tourism,Attractions,Tourist Attraction Records
+Hotel_ID Guest_Name Check_In Check_Out Room_Number,Hospitality,Hotels,Hotel Guest Records
+Room_ID Room_Type Capacity Nightly_Rate Room_Status,Hospitality,Rooms,Hotel Room Inventory
+Guest_ID Reservation_ID Payment_Amount Reservation_Date,Hospitality,Reservations,Hotel Reservation Records
+Staff_ID Hotel_Department Shift_Date Working_Hours,Hospitality,Staff,Hospitality Staff Records
+Movie_ID Movie_Name Director Release_Year Genre,Media & Entertainment,Movies,Movie Catalogue
+Artist_ID Album_Name Song_Name Release_Date,Media & Entertainment,Music,Music Catalogue
+Content_ID Video_Title Channel_Name Views Upload_Date,Media & Entertainment,Digital Media,Video Content Records
+Production_ID Program_Name Episode_Number Broadcast_Date,Media & Entertainment,Television,Television Production Records
+Construction_ID Project_Name Start_Date Completion_Date Contractor,Construction,Projects,Construction Project Records
+Material_ID Material_Name Quantity Unit_Cost Project_ID,Construction,Materials,Construction Material Records
+Worker_ID Site_ID Safety_Incident Incident_Date,Construction,Safety,Construction Safety Records
+Building_ID Floor_Number Inspection_Date Inspection_Result,Construction,Inspection,Building Inspection Records
+Meter_ID Customer_ID Electricity_Units Reading_Date,Energy & Utilities,Electricity,Electricity Consumption Records
+Solar_Panel_ID Energy_Generated Date Panel_Location,Energy & Utilities,Renewable Energy,Solar Energy Production Records
+Water_Meter_ID Customer_ID Water_Consumption Billing_Date,Energy & Utilities,Water,Water Consumption Records
+Customer_ID Gas_Usage Billing_Period Amount,Energy & Utilities,Gas,Gas Billing Records
+Sensor_ID Air_Quality PM25 PM10 Measurement_Date,Environment,Air Quality,Air Pollution Monitoring
+Waste_ID Waste_Type Quantity Collection_Date Disposal_Method,Environment,Waste,Waste Management Records
+Animal_ID Species Habitat Population_Observed Observation_Date,Environment,Biodiversity,Wildlife Observation Records
+Station_ID Temperature Rainfall Humidity Weather_Date,Environment,Weather,Weather Monitoring Records
+Asset_ID Computer_Name Serial_Number Assigned_Employee,IT & Software,IT Assets,IT Asset Register
+Ticket_ID Issue_Type Priority Assigned_Team Resolution_Status,IT & Software,IT Support,IT Support Tickets
+User_ID Username Role Last_Login Account_Status,IT & Software,User Management,User Account Records
+Project_ID Software_Name Version Release_Date Developer,IT & Software,Software Development,Software Release Records
+Server_ID CPU_Usage Memory_Usage Disk_Usage Timestamp,IT & Software,Infrastructure,Server Monitoring Records
+Subscriber_ID Phone_Number Plan_Name Monthly_Charge,Telecommunications,Subscriptions,Telecom Subscriber Records
+Tower_ID Cell_ID Signal_Strength Network_Type,Telecommunications,Networks,Telecom Network Monitoring
+Call_ID Caller_Number Receiver_Number Call_Duration Call_Date,Telecommunications,Calls,Call Detail Records
+Case_ID Client_Name Case_Type Filing_Date Case_Status,Legal,Cases,Legal Case Records
+Contract_ID Party_Name Agreement_Date Expiry_Date,Legal,Contracts,Contract Management Records
+Client_ID Lawyer_Name Consultation_Date Billing_Amount,Legal,Clients,Legal Client Records
+Case_ID Court_Name Hearing_Date Judge_Name,Legal,Courts,Court Hearing Records
+Policy_ID Policyholder_Name Coverage_Amount Premium,Insurance,Policies,Insurance Policy Records
+Claim_ID Policy_ID Claim_Date Claim_Amount Claim_Status,Insurance,Claims,Insurance Claim Records
+Customer_ID Policy_Type Premium_Amount Payment_Date,Insurance,Premiums,Insurance Premium Records
+Agent_ID Policy_ID Commission Renewal_Date,Insurance,Agents,Insurance Agent Records
+Experiment_ID Researcher_ID Hypothesis Start_Date,Research & Science,Experiments,Research Experiment Records
+Sample_ID Sample_Type Collection_Date Test_Result,Research & Science,Laboratory,Scientific Sample Records
+Study_ID Participant_ID Observation_Date Measured_Value,Research & Science,Studies,Research Study Records
+Publication_ID Author_Name Journal_Name Publication_Date,Research & Science,Publications,Research Publication Records
+Event_ID Event_Name Venue Event_Date,Events,Event Planning,Event Schedule Records
+Registration_ID Participant_Name Ticket_Type Registration_Date,Events,Registrations,Event Registration Records
+Event_ID Budget_Category Planned_Cost Actual_Cost,Events,Finance,Event Budget Records
+Vehicle_ID Model_Name Manufacturer Manufacturing_Year,Automotive,Vehicle Sales,Automobile Sales Records
+Service_ID Vehicle_ID Service_Date Service_Cost,Automotive,Vehicle Service,Automotive Service Records
+Part_ID Part_Name Compatibility Stock_Quantity,Automotive,Spare Parts,Automotive Spare Parts Inventory
+Vehicle_ID Engine_Type Fuel_Consumption Registration_Date,Automotive,Vehicle Data,Vehicle Specifications
+Incident_ID Incident_Type Location Incident_Date Resolution_Status,Security,Incidents,Security Incident Records
+Employee_ID Access_Point Entry_Time Exit_Time,Security,Access Control,Building Access Records
+Guard_ID Site_ID Shift_Start Shift_End,Security,Personnel,Security Staff Records
